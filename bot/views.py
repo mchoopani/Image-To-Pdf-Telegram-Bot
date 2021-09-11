@@ -1,7 +1,10 @@
+from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from json import loads
-from ModelClasses import Message
 import requests
+from urllib.request import urlretrieve as download
+
+from bot.ModelClasses import Message
 
 TELEGRAM_URL = "https://api.telegram.org/bot"
 FILE_URL = "https://api.telegram.org/file/bot"
@@ -26,30 +29,38 @@ def send_message(chat_id, text, parse_mode=None, reply_to_message_id=None):
 
 def get_file(file_id):
     data = {
-        "file_id": file_id
+        "file_id": file_id.replace("\n", "")
     }
     file_path = ""
     try:
-        result = requests.post(url_creator("getFile"), data=data)
-        file_path = result.body.get("file_path", None)
+        result = requests.get(url_creator("getFile"), data=data)
+        file_path = result.json().get("result").get("file_path", None)
     except Exception:
         # TODO
         send_message("TODO")
     return file_path
 
 
-def download_file(file_path):
+def download_file(file_path, user_id, index):
     # TODO: download photo from FILE_URL + TOKEN + file_path
-    pass
+    extension = file_path.split(".")[-1]
+    download(f"{FILE_URL}{TOKEN}/{file_path}", f"./{user_id}_{index}.{extension}")
 
 
 @csrf_exempt
 def telegram_webhook(request, *args, **kwargs):
     message = Message(translate_request(request))
+    print(translate_request(request))
     if message.is_photo_message():
         insert_photo_to_database(message.sender.id, message.photo.photo_id)
     else:
-        photos = select_photo_from_database(message.sender.id)
+        try:
+            photos = select_photo_from_database(message.sender.id)
+            for i in range(len(photos)):
+                download_file(get_file(photos[i]), message.sender.id, i)
+        except Exception:
+            pass
+    return JsonResponse({"ok": "POST request processed"})
 
 
 def insert_photo_to_database(user_id, photo_id):
@@ -58,7 +69,7 @@ def insert_photo_to_database(user_id, photo_id):
         open(f"{user_id}.txt", "x").close()
     except FileExistsError:
         pass
-    db = open(f"{user_id}.txt", "w")
+    db = open(f"{user_id}.txt", "a")
     db.write(f"{photo_id}\n")
     db.close()
 

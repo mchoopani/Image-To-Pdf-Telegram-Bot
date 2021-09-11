@@ -15,7 +15,7 @@ class Message:
         self.sender = User(data_dictionary.get("message").get("from"))
         self.text = data_dictionary.get("message").get("text", None)
         self.time = data_dictionary.get("message").get("date")
-        photo = data_dictionary.get("photo", None)
+        photo = data_dictionary.get("message").get("photo", None)
         # we keep best quality of picture
         self.photo = Photo(photo[-1]) if photo is not None else None
 
