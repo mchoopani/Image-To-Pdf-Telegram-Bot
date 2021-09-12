@@ -4,3 +4,5 @@ __pycache__
 templates
 bot/migrations
 *.txt
+*.jpg
+*.png

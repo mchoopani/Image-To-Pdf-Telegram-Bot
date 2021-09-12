@@ -3,7 +3,7 @@ from django.views.decorators.csrf import csrf_exempt
 from json import loads
 import requests
 from urllib.request import urlretrieve as download
-
+import img2pdf
 from bot.ModelClasses import Message
 
 TELEGRAM_URL = "https://api.telegram.org/bot"
@@ -27,7 +27,7 @@ def send_message(chat_id, text, parse_mode=None, reply_to_message_id=None):
     result = requests.post(url_creator("sendMessage"), data)
 
 
-def get_file(file_id):
+def get_file(file_id, chat_id):
     data = {
         "file_id": file_id.replace("\n", "")
     }
@@ -36,15 +36,21 @@ def get_file(file_id):
         result = requests.get(url_creator("getFile"), data=data)
         file_path = result.json().get("result").get("file_path", None)
     except Exception:
-        # TODO
-        send_message("TODO")
+        send_message(chat_id, "مشکلی در ارتباط با سرور تلگرام پیش آمد!")
     return file_path
 
 
 def download_file(file_path, user_id, index):
-    # TODO: download photo from FILE_URL + TOKEN + file_path
     extension = file_path.split(".")[-1]
-    download(f"{FILE_URL}{TOKEN}/{file_path}", f"./{user_id}_{index}.{extension}")
+    path = f"./{user_id}_{index}.{extension}"
+    download(f"{FILE_URL}{TOKEN}/{file_path}", f"{path}")
+    return path
+
+
+def convert_image_to_pdf(images: list, user_id):
+    with open(f"{user_id}.pdf", "wb") as f:
+        f.write(img2pdf.convert(images))
+    return f"{user_id}.pdf"
 
 
 @csrf_exempt
@@ -54,10 +60,15 @@ def telegram_webhook(request, *args, **kwargs):
     if message.is_photo_message():
         insert_photo_to_database(message.sender.id, message.photo.photo_id)
     else:
+        if message.text == "/start" or message.text == "hi":
+            return JsonResponse({"ok": "POST request processed"})
+        downloaded_pictures = []
         try:
             photos = select_photo_from_database(message.sender.id)
             for i in range(len(photos)):
-                download_file(get_file(photos[i]), message.sender.id, i)
+                downloaded_pictures\
+                    .append(str(download_file(get_file(photos[i], message.sender.id), message.sender.id, i)))
+            convert_image_to_pdf(downloaded_pictures, message.sender.id)
         except Exception:
             pass
     return JsonResponse({"ok": "POST request processed"})
