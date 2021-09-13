@@ -15,6 +15,18 @@ def url_creator(method_name):
     return f"{TELEGRAM_URL}{TOKEN}/{method_name}"
 
 
+def send_document(chat_id, file_path, caption):
+    file = open(file_path, "rb")
+    data = {
+        "chat_id": chat_id,
+    }
+    files = {"document": file}
+    if caption is not None:
+        data["caption"] = caption
+    result = requests.post(url_creator("sendDocument"), data, files=files)
+    file.close()
+
+
 def send_message(chat_id, text, parse_mode=None, reply_to_message_id=None):
     data = {
         "chat_id": chat_id,
@@ -66,9 +78,10 @@ def telegram_webhook(request, *args, **kwargs):
         try:
             photos = select_photo_from_database(message.sender.id)
             for i in range(len(photos)):
-                downloaded_pictures\
+                downloaded_pictures \
                     .append(str(download_file(get_file(photos[i], message.sender.id), message.sender.id, i)))
             convert_image_to_pdf(downloaded_pictures, message.sender.id)
+            send_document(message.sender.id, f"{message.sender.id}.pdf", None)
         except Exception:
             pass
     return JsonResponse({"ok": "POST request processed"})
