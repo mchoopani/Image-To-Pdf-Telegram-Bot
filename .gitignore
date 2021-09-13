@@ -6,3 +6,5 @@ bot/migrations
 *.txt
 *.jpg
 *.png
+*.pdf
+db.sqlite3

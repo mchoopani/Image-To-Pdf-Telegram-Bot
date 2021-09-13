@@ -71,20 +71,34 @@ def telegram_webhook(request, *args, **kwargs):
     print(translate_request(request))
     if message.is_photo_message():
         insert_photo_to_database(message.sender.id, message.photo.photo_id)
+        return JsonResponse({"ok": "POST request processed"})
     else:
-        if message.text == "/start" or message.text == "hi":
+        if message.text == "/start":
+            send_message(message.sender.id,"Hello welcome to your bot.\n"
+                                           "to start a project send: create\n"
+                                           "to end last active project send: export\n"
+                                           "after sending 'create' before history of projects will clear, "
+                                           "and start new project.\n"
+                                           "after send `export` all of pictures that send after last 'create'"
+                                           " and before 'export' will packed and converted to PDF.")
             return JsonResponse({"ok": "POST request processed"})
-        downloaded_pictures = []
-        try:
-            photos = select_photo_from_database(message.sender.id)
-            for i in range(len(photos)):
-                downloaded_pictures \
-                    .append(str(download_file(get_file(photos[i], message.sender.id), message.sender.id, i)))
-            convert_image_to_pdf(downloaded_pictures, message.sender.id)
-            send_document(message.sender.id, f"{message.sender.id}.pdf", None)
-        except Exception:
-            pass
-    return JsonResponse({"ok": "POST request processed"})
+        if message.text == "create":
+            # TODO: delete from real database
+            open(f"{message.sender.id}.txt", "w").close()
+            return JsonResponse({"ok": "POST request processed"})
+        if message.text == "export":
+            downloaded_pictures = []
+            try:
+                photos = select_photo_from_database(message.sender.id)
+                for i in range(len(photos)):
+                    downloaded_pictures \
+                        .append(str(download_file(get_file(photos[i], message.sender.id), message.sender.id, i)))
+                convert_image_to_pdf(downloaded_pictures, message.sender.id)
+                send_document(message.sender.id, f"{message.sender.id}.pdf", None)
+            except Exception:
+                pass
+            return JsonResponse({"ok": "POST request processed"})
+        return JsonResponse({"ok": "POST request processed"})
 
 
 def insert_photo_to_database(user_id, photo_id):
