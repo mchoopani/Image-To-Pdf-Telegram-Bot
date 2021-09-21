@@ -14,6 +14,7 @@ class Message:
     def __init__(self, data_dictionary: dict):
         self.sender = User(data_dictionary.get("message").get("from"))
         self.text = data_dictionary.get("message").get("text", None)
+        self.id = data_dictionary.get("message").get("message_id")
         self.time = data_dictionary.get("message").get("date")
         photo = data_dictionary.get("message").get("photo", None)
         # we keep best quality of picture
